@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using CurrencyApp.Api.Configuration;
 using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +36,19 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             }
         };
     });
+
+builder.Services.Configure<ExchangeRateHostOptions>(
+    builder.Configuration.GetSection("ExchangeRateHost"));
+
+builder.Services.AddHttpClient("ExchangeRateHost", (serviceProvider, client) =>
+{
+    var options = serviceProvider
+        .GetRequiredService<Microsoft.Extensions.Options.IOptions<ExchangeRateHostOptions>>()
+        .Value;
+
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+});
 
 builder.Services.AddAuthorization();
 
