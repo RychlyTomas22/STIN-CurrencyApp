@@ -1,6 +1,7 @@
 ﻿using CurrencyApp.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using CurrencyApp.Api.Mappings;
 
 namespace CurrencyApp.Api.Controllers
 {
@@ -10,13 +11,16 @@ namespace CurrencyApp.Api.Controllers
     public class RatesController : ControllerBase
     {
         private readonly IExchangeRateHostClient _exchangeRateHostClient;
+        private readonly IExchangeRateResponseMapper _responseMapper;
         private readonly ILogger<RatesController> _logger;
 
         public RatesController(
             IExchangeRateHostClient exchangeRateHostClient,
+            IExchangeRateResponseMapper responseMapper,
             ILogger<RatesController> logger)
         {
             _exchangeRateHostClient = exchangeRateHostClient;
+            _responseMapper = responseMapper;
             _logger = logger;
         }
 
@@ -29,11 +33,13 @@ namespace CurrencyApp.Api.Controllers
             {
                 var parsedCurrencies = ParseCurrencies(currencies);
 
-                var response = await _exchangeRateHostClient.GetLiveRatesAsync(
+                var externalResponse = await _exchangeRateHostClient.GetLiveRatesAsync(
                     parsedCurrencies,
                     cancellationToken: cancellationToken);
 
-                return Ok(response);
+                var mappedResponse = _responseMapper.MapLive(externalResponse);
+
+                return Ok(mappedResponse);
             }
             catch (ArgumentException ex)
             {
@@ -62,12 +68,14 @@ namespace CurrencyApp.Api.Controllers
             {
                 var parsedCurrencies = ParseCurrencies(currencies);
 
-                var response = await _exchangeRateHostClient.GetHistoricalRatesAsync(
+                var externalResponse = await _exchangeRateHostClient.GetHistoricalRatesAsync(
                     date,
                     parsedCurrencies,
                     cancellationToken: cancellationToken);
 
-                return Ok(response);
+                var mappedResponse = _responseMapper.MapHistorical(externalResponse);
+
+                return Ok(mappedResponse);
             }
             catch (ArgumentException ex)
             {
