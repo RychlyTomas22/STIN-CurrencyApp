@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Local shared authentication keys
+/sharedkeys/
+
+/src/CurrencyApp.Api/appsettings.Development.json
+/src/CurrencyApp.Web/appsettings.Development.json
