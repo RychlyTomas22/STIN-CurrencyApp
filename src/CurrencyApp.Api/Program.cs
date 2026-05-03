@@ -4,6 +4,7 @@ using CurrencyApp.Api.Configuration;
 using CurrencyApp.Api.Services;
 using CurrencyApp.Api.Mappings;
 using CurrencyApp.Core.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -56,6 +57,20 @@ builder.Services.AddHttpClient("ExchangeRateHost", (serviceProvider, client) =>
 builder.Services.Configure<ExchangeRateCacheOptions>(
     builder.Configuration.GetSection("ExchangeRateCache"));
 
+var webAppOrigin = builder.Configuration["Cors:WebAppOrigin"]
+                   ?? throw new InvalidOperationException("Missing configuration value: Cors:WebAppOrigin");
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("WebClient", policy =>
+    {
+        policy.WithOrigins(webAppOrigin)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddScoped<IExchangeRateHostClient, ExchangeRateHostClient>();
 builder.Services.AddScoped<IExchangeRateResponseMapper, ExchangeRateResponseMapper>();
 builder.Services.AddScoped<ICurrencyAnalysisService, CurrencyAnalysisService>();
@@ -75,7 +90,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseCors("WebClient");
 app.MapControllers();
 
 app.Run();

@@ -1,7 +1,132 @@
 ﻿@{
     ViewData["Title"] = "Dashboard";
+    var backendApiBaseUrl = ViewData["BackendApiBaseUrl"]?.ToString() ?? "";
 }
 
 <h1>Dashboard</h1>
 
-<
+<div class="mb-3">
+    <label for="currencies" class="form-label">Currencies</label>
+    <input id="currencies" class="form-control" value="CZK" placeholder="CZK,EUR" />
+</div>
+
+<div class="mb-3">
+    <label for="startDate" class="form-label">Start date</label>
+    <input id="startDate" type="date" class="form-control" value="2025-01-01" />
+</div>
+
+<div class="mb-3">
+    <label for="endDate" class="form-label">End date</label>
+    <input id="endDate" type="date" class="form-control" value="2025-01-01" />
+</div>
+
+<button id="analyzeButton" class="btn btn-primary">Analyze</button>
+
+<hr />
+
+<div id="errorBox" class="alert alert-danger d-none"></div>
+
+<div id="resultBox" class="d-none">
+    <h3>Analysis result</h3>
+
+    <p><strong>Base currency:</strong> <span id="baseCurrency"></span></p>
+    <p><strong>Current date:</strong> <span id="currentDate"></span></p>
+
+    <h4>Strongest currency</h4>
+    <p>
+        <span id="strongestCurrency"></span>
+        -
+        <span id="strongestRate"></span>
+    </p>
+
+    <h4>Weakest currency</h4>
+    <p>
+        <span id="weakestCurrency"></span>
+        -
+        <span id="weakestRate"></span>
+    </p>
+
+    <h4>Average rates</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Currency</th>
+                <th>Average rate</th>
+                <th>Sample count</th>
+            </tr>
+        </thead>
+        <tbody id="averageRatesTableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const backendApiBaseUrl = "@backendApiBaseUrl";
+
+    const analyzeButton = document.getElementById("analyzeButton");
+    const errorBox = document.getElementById("errorBox");
+    const resultBox = document.getElementById("resultBox");
+
+    analyzeButton.addEventListener("click", async () => {
+        errorBox.classList.add("d-none");
+        errorBox.textContent = "";
+        resultBox.classList.add("d-none");
+
+        const currencies = document.getElementById("currencies").value;
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+
+        const url =
+            `${backendApiBaseUrl}/api/analysis?currencies=${encodeURIComponent(currencies)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                credentials: "include"
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                const message = data.error ?? "Request failed.";
+                throw new Error(message);
+            }
+
+            renderAnalysisResult(data);
+        } catch (error) {
+            errorBox.textContent = error.message;
+            errorBox.classList.remove("d-none");
+        }
+    });
+
+    function renderAnalysisResult(data) {
+        document.getElementById("baseCurrency").textContent = data.baseCurrency;
+        document.getElementById("currentDate").textContent = data.currentDate;
+
+        document.getElementById("strongestCurrency").textContent =
+            data.strongestCurrency?.currency ?? "-";
+        document.getElementById("strongestRate").textContent =
+            data.strongestCurrency?.rate ?? "-";
+
+        document.getElementById("weakestCurrency").textContent =
+            data.weakestCurrency?.currency ?? "-";
+        document.getElementById("weakestRate").textContent =
+            data.weakestCurrency?.rate ?? "-";
+
+        const tbody = document.getElementById("averageRatesTableBody");
+        tbody.innerHTML = "";
+
+        for (const item of data.averageRates) {
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${item.currency}</td>
+                <td>${item.averageRate}</td>
+                <td>${item.sampleCount}</td>
+            `;
+
+            tbody.appendChild(row);
+        }
+
+        resultBox.classList.remove("d-none");
+    }
+</script>
