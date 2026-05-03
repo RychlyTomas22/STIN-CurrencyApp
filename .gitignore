@@ -365,5 +365,8 @@ FodyWeavers.xsd
 # Local shared authentication keys
 /sharedkeys/
 
+# Exchange rate cache
+/src/CurrencyApp.Api/data/exchange-rate-cache/
+
 /src/CurrencyApp.Api/appsettings.Development.json
 /src/CurrencyApp.Web/appsettings.Development.json
