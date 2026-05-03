@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 using CurrencyApp.Api.Configuration;
 using CurrencyApp.Api.Services;
 using CurrencyApp.Api.Mappings;
+using CurrencyApp.Core.Services;
 using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,8 +53,13 @@ builder.Services.AddHttpClient("ExchangeRateHost", (serviceProvider, client) =>
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
 
+builder.Services.Configure<ExchangeRateCacheOptions>(
+    builder.Configuration.GetSection("ExchangeRateCache"));
+
 builder.Services.AddScoped<IExchangeRateHostClient, ExchangeRateHostClient>();
 builder.Services.AddScoped<IExchangeRateResponseMapper, ExchangeRateResponseMapper>();
+builder.Services.AddScoped<ICurrencyAnalysisService, CurrencyAnalysisService>();
+builder.Services.AddScoped<IExchangeRateCacheService, FileExchangeRateCacheService>();
 
 builder.Services.AddAuthorization();
 
