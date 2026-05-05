@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - development
+      - master
+  pull_request:
+    branches:
+      - development
+      - master
+
+jobs:
+  build-test-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore STIN-CurrencyApp.sln
+
+      - name: Build
+        run: dotnet build STIN-CurrencyApp.sln --configuration Release --no-restore
+
+      - name: Test with coverage
+        run: dotnet test tests/CurrencyApp.Tests/CurrencyApp.Tests.csproj --configuration Release --no-build --collect:"XPlat Code Coverage"
+
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate coverage report
+        run: |
+          reportgenerator \
+            -reports:"tests/CurrencyApp.Tests/TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"tests/CurrencyApp.Tests/TestResults/CoverageReport" \
+            -reporttypes:"Html;Cobertura"
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: tests/CurrencyApp.Tests/TestResults/CoverageReport
