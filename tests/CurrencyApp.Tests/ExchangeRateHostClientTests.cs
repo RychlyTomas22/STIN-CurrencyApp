@@ -237,5 +237,24 @@ namespace CurrencyApp.Tests
                 return Task.FromResult(_handler(request));
             }
         }
+        [Fact]
+        public async Task GetLiveRatesAsync_ShouldUseUnknownApiError_WhenErrorDetailsAreMissing()
+        {
+            var handler = new FakeHttpMessageHandler(_ =>
+                CreateJsonResponse(HttpStatusCode.OK, """
+        {
+          "success": false,
+          "error": null
+        }
+        """));
+
+            var client = CreateClient(handler);
+            var service = CreateService(client, accessKey: "test-key");
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.GetLiveRatesAsync(new[] { "CZK" }));
+
+            Assert.Contains("Unknown API error", ex.Message);
+        }
     }
 }

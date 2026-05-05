@@ -100,5 +100,90 @@ namespace CurrencyApp.Tests
 
             Assert.Contains("does not start with source currency", ex.Message);
         }
+
+        [Fact]
+        public void MapLive_ShouldUseCurrentUtcDate_WhenTimestampIsMissing()
+        {
+            var response = new LiveRatesResponse
+            {
+                Success = true,
+                Timestamp = null,
+                Source = "USD",
+                Quotes = new Dictionary<string, decimal>
+        {
+            { "USDCZK", 24.50m }
+        }
+            };
+
+            var result = _mapper.MapLive(response);
+
+            Assert.Equal("USD", result.BaseCurrency);
+            Assert.Single(result.Rates);
+            Assert.Equal("CZK", result.Rates[0].Currency);
+
+            var todayUtc = DateOnly.FromDateTime(DateTime.UtcNow);
+            Assert.Equal(todayUtc, result.Date);
+        }
+
+        [Fact]
+        public void MapLive_ShouldThrow_WhenSourceCurrencyIsMissing()
+        {
+            var response = new LiveRatesResponse
+            {
+                Success = true,
+                Timestamp = 1735689600,
+                Source = "",
+                Quotes = new Dictionary<string, decimal>
+        {
+            { "USDCZK", 24.50m }
+        }
+            };
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                _mapper.MapLive(response));
+
+            Assert.Contains("Source currency is missing", ex.Message);
+        }
+
+        [Fact]
+        public void MapLive_ShouldThrow_WhenQuoteKeyIsMissing()
+        {
+            var response = new LiveRatesResponse
+            {
+                Success = true,
+                Timestamp = 1735689600,
+                Source = "USD",
+                Quotes = new Dictionary<string, decimal>
+        {
+            { "", 24.50m }
+        }
+            };
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                _mapper.MapLive(response));
+
+            Assert.Contains("Quote key is missing", ex.Message);
+        }
+
+        [Fact]
+        public void MapLive_ShouldThrow_WhenQuoteKeyHasNoTargetCurrency()
+        {
+            var response = new LiveRatesResponse
+            {
+                Success = true,
+                Timestamp = 1735689600,
+                Source = "USD",
+                Quotes = new Dictionary<string, decimal>
+        {
+            { "USD", 1.0m }
+        }
+            };
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                _mapper.MapLive(response));
+
+            Assert.Contains("Failed to extract target currency", ex.Message);
+        }
+
     }
 }

@@ -132,5 +132,30 @@ namespace CurrencyApp.Tests
                 return Task.CompletedTask;
             }
         }
+
+        [Fact]
+        public async Task Save_ShouldHandleNullSelectedCurrencies_WhenPayloadIsValid()
+        {
+            var service = new FakeUserSettingsService();
+            var controller = CreateController(service);
+
+            var input = new UserSettings
+            {
+                BaseCurrency = " usd ",
+                SelectedCurrencies = null!
+            };
+
+            var result = await controller.Save(input, default);
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<UserSettings>(ok.Value);
+
+            Assert.Equal("USD", payload.BaseCurrency);
+            Assert.Empty(payload.SelectedCurrencies);
+
+            Assert.NotNull(service.LastSavedSettings);
+            Assert.Equal("USD", service.LastSavedSettings!.BaseCurrency);
+            Assert.Empty(service.LastSavedSettings.SelectedCurrencies);
+        }
     }
 }
