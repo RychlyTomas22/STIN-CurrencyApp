@@ -4,12 +4,43 @@ using CurrencyApp.Api.Configuration;
 using CurrencyApp.Api.Services;
 using CurrencyApp.Api.Mappings;
 using CurrencyApp.Core.Services;
-using CurrencyApp.Api.Configuration;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Serilog;
 using System.IO;
+
+
+var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+    .AddUserSecrets<Program>(optional: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+var logPath = configuration["LoggingStorage:Path"] ?? "data/logs/log-.txt";
+var resolvedLogPath = Path.IsPathRooted(logPath)
+    ? logPath
+    : Path.Combine(Directory.GetCurrentDirectory(), logPath);
+
+var logDirectory = Path.GetDirectoryName(resolvedLogPath);
+if (!string.IsNullOrWhiteSpace(logDirectory))
+{
+    Directory.CreateDirectory(logDirectory);
+}
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(configuration)
+    .WriteTo.File(
+        resolvedLogPath,
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        shared: true)
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -75,6 +106,9 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<UserSettingsStorageOptions>(
     builder.Configuration.GetSection("UserSettingsStorage"));
 
+builder.Services.Configure<LoggingStorageOptions>(
+    builder.Configuration.GetSection("LoggingStorage"));
+
 builder.Services.AddScoped<IExchangeRateHostClient, ExchangeRateHostClient>();
 builder.Services.AddScoped<IExchangeRateResponseMapper, ExchangeRateResponseMapper>();
 builder.Services.AddScoped<ICurrencyAnalysisService, CurrencyAnalysisService>();
@@ -98,4 +132,16 @@ app.UseAuthorization();
 app.UseCors("WebClient");
 app.MapControllers();
 
-app.Run();
+try
+{
+    Log.Information("Starting CurrencyApp.Api");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "CurrencyApp.Api terminated");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

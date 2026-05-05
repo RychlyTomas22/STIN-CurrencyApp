@@ -371,5 +371,8 @@ FodyWeavers.xsd
 # User settings storage
 /src/CurrencyApp.Api/data/user-settings/
 
+# Application logs
+/src/CurrencyApp.Api/data/logs/
+
 /src/CurrencyApp.Api/appsettings.Development.json
 /src/CurrencyApp.Web/appsettings.Development.json
