@@ -1,12 +1,9 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.DataProtection;
 using CurrencyApp.Api.Configuration;
 using CurrencyApp.Api.Services;
 using CurrencyApp.Api.Mappings;
 using CurrencyApp.Core.Services;
 using Serilog;
 using System.IO;
-
 
 var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
@@ -45,34 +42,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var keyRingPath = builder.Configuration["SharedAuth:KeyRingPath"]
-                  ?? throw new InvalidOperationException(
-                      "Missing configuration value: SharedAuth:KeyRingPath");
-
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
-    .SetApplicationName("CurrencyApp");
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.Cookie.Name = "CurrencyApp.Auth";
-
-        options.Events = new CookieAuthenticationEvents
-        {
-            OnRedirectToLogin = context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
-            },
-            OnRedirectToAccessDenied = context =>
-            {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return Task.CompletedTask;
-            }
-        };
-    });
-
 builder.Services.Configure<ExchangeRateHostOptions>(
     builder.Configuration.GetSection("ExchangeRateHost"));
 
@@ -89,20 +58,6 @@ builder.Services.AddHttpClient("ExchangeRateHost", (serviceProvider, client) =>
 builder.Services.Configure<ExchangeRateCacheOptions>(
     builder.Configuration.GetSection("ExchangeRateCache"));
 
-var webAppOrigin = builder.Configuration["Cors:WebAppOrigin"]
-                   ?? throw new InvalidOperationException("Missing configuration value: Cors:WebAppOrigin");
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("WebClient", policy =>
-    {
-        policy.WithOrigins(webAppOrigin)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-});
-
 builder.Services.Configure<UserSettingsStorageOptions>(
     builder.Configuration.GetSection("UserSettingsStorage"));
 
@@ -114,8 +69,6 @@ builder.Services.AddScoped<IExchangeRateResponseMapper, ExchangeRateResponseMapp
 builder.Services.AddScoped<ICurrencyAnalysisService, CurrencyAnalysisService>();
 builder.Services.AddScoped<IExchangeRateCacheService, FileExchangeRateCacheService>();
 builder.Services.AddScoped<IUserSettingsService, FileUserSettingsService>();
-
-builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -149,9 +102,6 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseCors("WebClient");
 app.MapControllers();
 
 try
