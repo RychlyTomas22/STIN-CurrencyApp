@@ -1,16 +1,3 @@
-ČÁST E — deploy workflow do GitHub Actions
-13. V rootu repa vytvoř soubor
-
-Vytvoř lokálně v projektu:
-
-.github/workflows/deploy.yml
-
-Ano, zase v rootu repa, tedy tam, kde máš .sln, src, tests, .github.
-
-14. Vlož do deploy.yml tento obsah
-
-Jen si přepiš názvy app podle toho, jak ses rozhodl je pojmenovat.
-
 name: Deploy
 
 on:
@@ -37,7 +24,7 @@ jobs:
       - name: Deploy Web to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
-          app-name: currencyapp-web-tomas
+          app-name: STIN-web
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_WEB }}
           package: publish/web
 
@@ -60,16 +47,6 @@ jobs:
       - name: Deploy API to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
-          app-name: currencyapp-api-tomas
+          app-name: STIN-api
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
           package: publish/api
-
-GitHub Actions workflow syntax používá jobs, steps, uses a run, a Azure App Service deployment přes workflow používá azure/webapps-deploy@v3 s app-name a package.
-
-15. Co přesně zkontrolovat v tom YAML
-
-Zkontroluj:
-
-app-name musí přesně odpovídat názvům Azure app
-cesty k .csproj musí sedět
-workflow je opravdu na master
