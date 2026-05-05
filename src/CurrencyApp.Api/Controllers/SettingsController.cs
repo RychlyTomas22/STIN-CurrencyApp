@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace CurrencyApp.Api.Controllers
 {
     [ApiController]
-    [Authorize]
     [Route("api/[controller]")]
     public class SettingsController : ControllerBase
     {

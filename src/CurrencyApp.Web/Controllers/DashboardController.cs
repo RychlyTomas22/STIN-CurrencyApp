@@ -1,25 +1,54 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using CurrencyApp.Web.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CurrencyApp.Web.Controllers
 {
     [Authorize]
     public class DashboardController : Controller
     {
-        private readonly IConfiguration _configuration;
+        private readonly IBackendApiClient _backendApiClient;
 
-        public DashboardController(IConfiguration configuration)
+        public DashboardController(IBackendApiClient backendApiClient)
         {
-            _configuration = configuration;
+            _backendApiClient = backendApiClient;
         }
 
         public IActionResult Index()
         {
-            ViewData["BackendApiBaseUrl"] =
-                _configuration["BackendApi:BaseUrl"]
-                ?? throw new InvalidOperationException("Missing configuration value: BackendApi:BaseUrl");
-
             return View();
         }
+
+        [HttpPost]
+        public async Task<IActionResult> Analyze(
+            [FromBody] DashboardAnalyzeRequest request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await _backendApiClient.AnalyzeAsync(
+                    request.Currencies,
+                    request.StartDate,
+                    request.EndDate,
+                    cancellationToken);
+
+                return Ok(result);
+            }
+            catch (HttpRequestException ex)
+            {
+                return StatusCode(502, new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(502, new { error = ex.Message });
+            }
+        }
+    }
+
+    public class DashboardAnalyzeRequest
+    {
+        public string Currencies { get; set; } = string.Empty;
+        public DateOnly StartDate { get; set; }
+        public DateOnly EndDate { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 using CurrencyApp.Web.Configuration;
+using CurrencyApp.Web.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
@@ -27,6 +28,21 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpClient("BackendApi", client =>
+{
+    var baseUrl = builder.Configuration["BackendApi:BaseUrl"]
+        ?? throw new InvalidOperationException("Missing configuration value: BackendApi:BaseUrl");
+
+    var apiKey = builder.Configuration["BackendApi:ApiKey"]
+        ?? throw new InvalidOperationException("Missing configuration value: BackendApi:ApiKey");
+
+    client.BaseAddress = new Uri(baseUrl);
+    client.DefaultRequestHeaders.Add("X-Internal-Api-Key", apiKey);
+});
+
+builder.Services.AddScoped<IBackendApiClient, BackendApiClient>();
+
 
 var app = builder.Build();
 

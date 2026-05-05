@@ -6,7 +6,6 @@ using CurrencyApp.Api.Mappings;
 namespace CurrencyApp.Api.Controllers
 {
     [ApiController]
-    [Authorize]
     [Route("api/[controller]")]
     public class RatesController : ControllerBase
     {

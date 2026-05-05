@@ -1,6 +1,5 @@
 ﻿@{
     ViewData["Title"] = "Dashboard";
-    var backendApiBaseUrl = ViewData["BackendApiBaseUrl"]?.ToString() ?? "";
 }
 
 <h1>Dashboard</h1>
@@ -60,7 +59,6 @@
 </div>
 
 <script>
-    const backendApiBaseUrl = "@backendApiBaseUrl";
 
     const analyzeButton = document.getElementById("analyzeButton");
     const errorBox = document.getElementById("errorBox");
@@ -75,14 +73,18 @@
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
 
-        const url =
-            `${backendApiBaseUrl}/api/analysis?currencies=${encodeURIComponent(currencies)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-
-        try {
-            const response = await fetch(url, {
-                method: "GET",
-                credentials: "include"
-            });
+    try {
+        const response = await fetch("/Dashboard/Analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                currencies: currencies,
+                startDate: startDate,
+                endDate: endDate
+            })
+        });
 
             const data = await response.json();
 

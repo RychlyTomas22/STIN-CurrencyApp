@@ -119,6 +119,9 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+var internalApiKey = builder.Configuration["InternalApiAuth:ApiKey"]
+    ?? throw new InvalidOperationException("Missing configuration value: InternalApiAuth:ApiKey");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -126,6 +129,25 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+
+    if (path.StartsWithSegments("/api") && !path.StartsWithSegments("/api/health"))
+    {
+        var providedApiKey = context.Request.Headers["X-Internal-Api-Key"].ToString();
+
+        if (!string.Equals(providedApiKey, internalApiKey, StringComparison.Ordinal))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsJsonAsync(new { error = "Unauthorized." });
+            return;
+        }
+    }
+
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

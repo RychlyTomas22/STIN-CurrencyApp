@@ -1,0 +1,75 @@
+ČÁST E — deploy workflow do GitHub Actions
+13. V rootu repa vytvoř soubor
+
+Vytvoř lokálně v projektu:
+
+.github/workflows/deploy.yml
+
+Ano, zase v rootu repa, tedy tam, kde máš .sln, src, tests, .github.
+
+14. Vlož do deploy.yml tento obsah
+
+Jen si přepiš názvy app podle toho, jak ses rozhodl je pojmenovat.
+
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish Web
+        run: dotnet publish src/CurrencyApp.Web/CurrencyApp.Web.csproj -c Release -o publish/web
+
+      - name: Deploy Web to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: currencyapp-web-tomas
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_WEB }}
+          package: publish/web
+
+  deploy-api:
+    runs-on: ubuntu-latest
+    needs: deploy-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish API
+        run: dotnet publish src/CurrencyApp.Api/CurrencyApp.Api.csproj -c Release -o publish/api
+
+      - name: Deploy API to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: currencyapp-api-tomas
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
+          package: publish/api
+
+GitHub Actions workflow syntax používá jobs, steps, uses a run, a Azure App Service deployment přes workflow používá azure/webapps-deploy@v3 s app-name a package.
+
+15. Co přesně zkontrolovat v tom YAML
+
+Zkontroluj:
+
+app-name musí přesně odpovídat názvům Azure app
+cesty k .csproj musí sedět
+workflow je opravdu na master
