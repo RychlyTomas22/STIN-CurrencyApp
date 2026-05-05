@@ -1,0 +1,114 @@
+﻿@{
+    ViewData["Title"] = "Settings";
+}
+
+<h1>Settings</h1>
+
+<div id="successBox" class="alert alert-success d-none"></div>
+<div id="errorBox" class="alert alert-danger d-none"></div>
+
+<div class="mb-3">
+    <label for="baseCurrency" class="form-label">Base currency</label>
+    <input id="baseCurrency" class="form-control" placeholder="USD" />
+</div>
+
+<div class="mb-3">
+    <label for="selectedCurrencies" class="form-label">Selected currencies</label>
+    <input id="selectedCurrencies" class="form-control" placeholder="CZK,EUR,USD" />
+</div>
+
+<button id="loadButton" class="btn btn-secondary me-2">Load</button>
+<button id="saveButton" class="btn btn-primary">Save</button>
+
+<script>
+
+    const successBox = document.getElementById("successBox");
+    const errorBox = document.getElementById("errorBox");
+    const baseCurrencyInput = document.getElementById("baseCurrency");
+    const selectedCurrenciesInput = document.getElementById("selectedCurrencies");
+    const loadButton = document.getElementById("loadButton");
+    const saveButton = document.getElementById("saveButton");
+
+    function showSuccess(message) {
+        successBox.textContent = message;
+        successBox.classList.remove("d-none");
+
+        errorBox.textContent = "";
+        errorBox.classList.add("d-none");
+    }
+
+    function showError(message) {
+        errorBox.textContent = message;
+        errorBox.classList.remove("d-none");
+
+        successBox.textContent = "";
+        successBox.classList.add("d-none");
+    }
+
+    function clearMessages() {
+        successBox.textContent = "";
+        successBox.classList.add("d-none");
+
+        errorBox.textContent = "";
+        errorBox.classList.add("d-none");
+    }
+
+    async function loadSettings() {
+        clearMessages();
+
+        try {
+            const response = await fetch("/Settings/Load", {
+               method: "GET"
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error ?? "Failed to load settings.");
+            }
+
+            baseCurrencyInput.value = data.baseCurrency ?? "";
+            selectedCurrenciesInput.value = (data.selectedCurrencies ?? []).join(",");
+        } catch (error) {
+            showError(error.message);
+        }
+    }
+
+    async function saveSettings() {
+        clearMessages();
+
+        const payload = {
+            baseCurrency: baseCurrencyInput.value,
+            selectedCurrencies: selectedCurrenciesInput.value
+                .split(",")
+                .map(x => x.trim())
+                .filter(x => x.length > 0)
+        };
+
+        try {
+            const response = await fetch(`${backendApiBaseUrl}/api/settings`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error ?? "Failed to save settings.");
+            }
+
+            baseCurrencyInput.value = data.baseCurrency ?? "";
+            selectedCurrenciesInput.value = (data.selectedCurrencies ?? []).join(",");
+
+            showSuccess("Settings saved successfully.");
+        } catch (error) {
+            showError(error.message);
+        }
+    }
+
+    loadButton.addEventListener("click", loadSettings);
+    saveButton.addEventListener("click", saveSettings);
+
+    loadSettings();
+</script>
