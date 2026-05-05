@@ -205,5 +205,85 @@ namespace CurrencyApp.Tests
 
             Assert.Contains("same base currency", ex.Message);
         }
+
+        [Fact]
+        public void Analyze_ShouldReturnEmptyAverageRates_WhenHistoricalSnapshotsAreEmpty()
+        {
+            var currentSnapshot = new ExchangeRateSnapshot
+            {
+                BaseCurrency = "USD",
+                Date = new DateOnly(2025, 1, 3),
+                Rates = new List<ExchangeRateValue>
+        {
+            new() { Currency = "CZK", Rate = 24.5m },
+            new() { Currency = "EUR", Rate = 0.85m }
+        }
+            };
+
+            var result = _service.Analyze(currentSnapshot, new List<ExchangeRateSnapshot>());
+
+            Assert.NotNull(result);
+            Assert.Empty(result.AverageRates);
+            Assert.Equal("CZK", result.StrongestCurrency!.Currency);
+            Assert.Equal("EUR", result.WeakestCurrency!.Currency);
+        }
+
+        [Fact]
+        public void Analyze_ShouldUseAlphabeticalOrder_WhenRatesAreEqual()
+        {
+            var currentSnapshot = new ExchangeRateSnapshot
+            {
+                BaseCurrency = "USD",
+                Date = new DateOnly(2025, 1, 3),
+                Rates = new List<ExchangeRateValue>
+        {
+            new() { Currency = "EUR", Rate = 1.00m },
+            new() { Currency = "CZK", Rate = 1.00m }
+        }
+            };
+
+            var result = _service.Analyze(currentSnapshot, new List<ExchangeRateSnapshot>());
+
+            Assert.Equal("CZK", result.WeakestCurrency!.Currency);
+            Assert.Equal("CZK", result.StrongestCurrency!.Currency);
+        }
+
+        [Fact]
+        public void Analyze_ShouldThrow_WhenCurrentSnapshotRatesAreNull()
+        {
+            var currentSnapshot = new ExchangeRateSnapshot
+            {
+                BaseCurrency = "USD",
+                Date = new DateOnly(2025, 1, 3),
+                Rates = null!
+            };
+
+            var ex = Assert.Throws<ArgumentException>(() =>
+                _service.Analyze(currentSnapshot, new List<ExchangeRateSnapshot>()));
+
+            Assert.Contains("Current snapshot must contain at least one rate", ex.Message);
+        }
+
+        [Fact]
+        public void Analyze_ShouldHandleNullHistoricalSnapshots()
+        {
+            var currentSnapshot = new ExchangeRateSnapshot
+            {
+                BaseCurrency = "USD",
+                Date = new DateOnly(2025, 1, 3),
+                Rates = new List<ExchangeRateValue>
+        {
+            new() { Currency = "CZK", Rate = 24.5m },
+            new() { Currency = "EUR", Rate = 0.85m }
+        }
+            };
+
+            var result = _service.Analyze(currentSnapshot, null!);
+
+            Assert.NotNull(result);
+            Assert.Empty(result.AverageRates);
+            Assert.Equal("CZK", result.StrongestCurrency!.Currency);
+            Assert.Equal("EUR", result.WeakestCurrency!.Currency);
+        }
     }
 }
