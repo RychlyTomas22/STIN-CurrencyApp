@@ -4,6 +4,7 @@ using CurrencyApp.Api.Configuration;
 using CurrencyApp.Api.Services;
 using CurrencyApp.Api.Mappings;
 using CurrencyApp.Core.Services;
+using CurrencyApp.Api.Configuration;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.IO;
 
@@ -71,10 +72,14 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.Configure<UserSettingsStorageOptions>(
+    builder.Configuration.GetSection("UserSettingsStorage"));
+
 builder.Services.AddScoped<IExchangeRateHostClient, ExchangeRateHostClient>();
 builder.Services.AddScoped<IExchangeRateResponseMapper, ExchangeRateResponseMapper>();
 builder.Services.AddScoped<ICurrencyAnalysisService, CurrencyAnalysisService>();
 builder.Services.AddScoped<IExchangeRateCacheService, FileExchangeRateCacheService>();
+builder.Services.AddScoped<IUserSettingsService, FileUserSettingsService>();
 
 builder.Services.AddAuthorization();
 

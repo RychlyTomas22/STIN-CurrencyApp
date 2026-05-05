@@ -368,5 +368,8 @@ FodyWeavers.xsd
 # Exchange rate cache
 /src/CurrencyApp.Api/data/exchange-rate-cache/
 
+# User settings storage
+/src/CurrencyApp.Api/data/user-settings/
+
 /src/CurrencyApp.Api/appsettings.Development.json
 /src/CurrencyApp.Web/appsettings.Development.json
