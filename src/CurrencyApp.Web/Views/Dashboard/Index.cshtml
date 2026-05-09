@@ -73,18 +73,23 @@
         const startDate = document.getElementById("startDate").value;
         const endDate = document.getElementById("endDate").value;
 
-    try {
-        const response = await fetch("/Dashboard/Analyze", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                currencies: currencies,
-                startDate: startDate,
-                endDate: endDate
-            })
-        });
+        try {
+            const response = await fetch("/Dashboard/Analyze", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    currencies: currencies,
+                    startDate: startDate,
+                    endDate: endDate
+                })
+            });
+
+            if (response.status === 502) {
+                window.location.href = "/ErrorState/ApiFail";
+                return;
+            }
 
             const data = await response.json();
 

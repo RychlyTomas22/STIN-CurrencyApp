@@ -410,5 +410,25 @@ namespace CurrencyApp.Tests
                 return Task.CompletedTask;
             }
         }
+        private sealed class FakeUserSettingsService : IUserSettingsService
+        {
+            public UserSettings Settings { get; set; } = new()
+            {
+                BaseCurrency = "USD",
+                SelectedCurrencies = new List<string> { "CZK" }
+            };
+
+            public Task<UserSettings> GetAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(Settings);
+            }
+
+            public Task SaveAsync(UserSettings settings, CancellationToken cancellationToken = default)
+            {
+                Settings = settings;
+                return Task.CompletedTask;
+            }
+        }
     }
+
 }

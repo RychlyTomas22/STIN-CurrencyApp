@@ -58,8 +58,13 @@
 
         try {
             const response = await fetch("/Settings/Load", {
-               method: "GET"
+                method: "GET"
             });
+
+            if (response.status === 502) {
+                window.location.href = "/ErrorState/ApiFail";
+                return;
+            }
 
             const data = await response.json();
 
@@ -86,11 +91,18 @@
         };
 
         try {
-            const response = await fetch(`${backendApiBaseUrl}/api/settings`, {
+            const response = await fetch("/Settings/Save", {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
+                headers: {
+                    "Content-Type": "application/json"
+                },
                 body: JSON.stringify(payload)
             });
+
+            if (response.status === 502) {
+                window.location.href = "/ErrorState/ApiFail";
+                return;
+            }
 
             const data = await response.json();
 
