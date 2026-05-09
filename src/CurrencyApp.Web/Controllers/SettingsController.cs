@@ -45,6 +45,26 @@ namespace CurrencyApp.Web.Controllers
         {
             try
             {
+                if (settings is null)
+                {
+                    return BadRequest(new { error = "Settings payload is required." });
+                }
+
+                if (string.IsNullOrWhiteSpace(settings.BaseCurrency))
+                {
+                    return BadRequest(new { error = "Base currency is required." });
+                }
+
+                settings.BaseCurrency = settings.BaseCurrency.Trim().ToUpperInvariant();
+
+                settings.SelectedCurrencies = settings.SelectedCurrencies?
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim().ToUpperInvariant())
+                    .Where(x => !string.Equals(x, settings.BaseCurrency, StringComparison.OrdinalIgnoreCase))
+                    .Distinct()
+                    .ToList()
+                    ?? new List<string>();
+
                 var result = await _backendApiClient.SaveSettingsAsync(settings, cancellationToken);
                 return Ok(result);
             }

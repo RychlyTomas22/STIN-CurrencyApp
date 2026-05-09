@@ -24,10 +24,23 @@ builder.Services.AddHttpClient("BackendApi", client =>
     var baseUrl = builder.Configuration["BackendApi:BaseUrl"]
         ?? throw new InvalidOperationException("Missing configuration value: BackendApi:BaseUrl");
 
+    baseUrl = baseUrl.Trim();
+
+    if (!baseUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+        !baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+    {
+        baseUrl = "https://" + baseUrl;
+    }
+
+    if (!baseUrl.EndsWith("/"))
+    {
+        baseUrl += "/";
+    }
+
     var apiKey = builder.Configuration["BackendApi:ApiKey"]
         ?? throw new InvalidOperationException("Missing configuration value: BackendApi:ApiKey");
 
-    client.BaseAddress = new Uri(baseUrl);
+    client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
     client.DefaultRequestHeaders.Add("X-Internal-Api-Key", apiKey);
 });
 
