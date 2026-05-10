@@ -13,6 +13,7 @@ namespace CurrencyApp.Web.Services
         }
 
         public async Task<CurrencyAnalysisResult> AnalyzeAsync(
+            string baseCurrency,
             string currencies,
             DateOnly startDate,
             DateOnly endDate,
@@ -20,8 +21,13 @@ namespace CurrencyApp.Web.Services
         {
             var client = _httpClientFactory.CreateClient("BackendApi");
 
+            var normalizedBaseCurrency = string.IsNullOrWhiteSpace(baseCurrency)
+                ? "USD"
+                : baseCurrency.Trim().ToUpperInvariant();
+
             var url =
-                $"api/analysis?currencies={Uri.EscapeDataString(currencies)}" +
+                $"api/analysis?baseCurrency={Uri.EscapeDataString(normalizedBaseCurrency)}" +
+                $"&currencies={Uri.EscapeDataString(currencies)}" +
                 $"&startDate={startDate:yyyy-MM-dd}" +
                 $"&endDate={endDate:yyyy-MM-dd}";
 
