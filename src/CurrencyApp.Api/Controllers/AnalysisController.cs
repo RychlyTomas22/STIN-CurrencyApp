@@ -33,6 +33,7 @@ namespace CurrencyApp.Api.Controllers
 
         [HttpGet]
         public async Task<IActionResult> Analyze(
+            [FromQuery] string? baseCurrency,
             [FromQuery] string currencies,
             [FromQuery] DateOnly startDate,
             [FromQuery] DateOnly endDate,
@@ -42,28 +43,41 @@ namespace CurrencyApp.Api.Controllers
             {
                 var parsedCurrencies = ParseCurrencies(currencies);
 
+                var dates = DateRangeHelper.GetDatesInclusive(startDate, endDate);
+
+                var sourceCurrency = string.IsNullOrWhiteSpace(baseCurrency)
+                    ? "USD"
+                    : baseCurrency.Trim().ToUpperInvariant();
+
+                parsedCurrencies = parsedCurrencies
+                    .Where(currency => !string.Equals(
+                        currency,
+                        sourceCurrency,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (parsedCurrencies.Count == 0)
+                {
+                    return BadRequest(new
+                    {
+                        error = "At least one selected currency different from base currency must be provided."
+                    });
+                }
+
                 var selectedCurrencies = new HashSet<string>(
                     parsedCurrencies,
                     StringComparer.OrdinalIgnoreCase);
-
-                var dates = DateRangeHelper.GetDatesInclusive(startDate, endDate);
-
-                if (dates.Count == 0)
-                {
-                    return BadRequest(new { error = "Date range must contain at least one day." });
-                }
-
-                const string sourceCurrency = "USD";
 
                 var currentSnapshot =
                     await _exchangeRateCacheService.TryGetLiveSnapshotAsync(
                         sourceCurrency,
                         cancellationToken);
 
-                if (currentSnapshot is null)
+                if (currentSnapshot is null ||
+                    !ContainsAllRequestedCurrencies(currentSnapshot, selectedCurrencies))
                 {
                     _logger.LogInformation(
-                        "Live snapshot not found in cache for base currency {BaseCurrency}. Fetching from ExchangeRateHost.",
+                        "Live snapshot for base currency {BaseCurrency} is missing requested currencies. Fetching from ExchangeRateHost.",
                         sourceCurrency);
 
                     var currentLiveResponse = await _exchangeRateHostClient.GetLiveRatesAsync(
@@ -89,88 +103,70 @@ namespace CurrencyApp.Api.Controllers
                 if (filteredCurrentSnapshot.Rates.Count == 0)
                 {
                     _logger.LogInformation(
-                        "Cached live snapshot does not contain requested currencies. Fetching fresh live snapshot.");
+                        "Current snapshot does not contain requested currencies after refresh.");
 
-                    var currentLiveResponse = await _exchangeRateHostClient.GetLiveRatesAsync(
-                        parsedCurrencies,
-                        sourceCurrency,
-                        cancellationToken);
-
-                    currentSnapshot = _responseMapper.MapLive(currentLiveResponse);
-
-                    await _exchangeRateCacheService.SaveLiveSnapshotAsync(
-                        currentSnapshot,
-                        cancellationToken);
-
-                    filteredCurrentSnapshot = FilterSnapshot(currentSnapshot, selectedCurrencies);
-
-                    if (filteredCurrentSnapshot.Rates.Count == 0)
-                    {
-                        return BadRequest(new { error = "No requested currencies were found in the current snapshot." });
-                    }
+                    return BadRequest(new { error = "No requested currencies were found in the current snapshot." });
                 }
 
                 var historicalSnapshots = new List<ExchangeRateSnapshot>();
 
                 foreach (var date in dates)
                 {
-                    var historicalSnapshot =
-                        await _exchangeRateCacheService.TryGetHistoricalSnapshotAsync(
-                            sourceCurrency,
-                            date,
-                            cancellationToken);
-
-                    if (historicalSnapshot is null)
+                    try
                     {
-                        _logger.LogInformation(
-                            "Historical snapshot for {Date} and base currency {BaseCurrency} not found in cache. Fetching from ExchangeRateHost.",
-                            date,
-                            sourceCurrency);
+                        var historicalSnapshot =
+                            await _exchangeRateCacheService.TryGetHistoricalSnapshotAsync(
+                                sourceCurrency,
+                                date,
+                                cancellationToken);
 
-                        var historicalResponse = await _exchangeRateHostClient.GetHistoricalRatesAsync(
-                            date,
-                            parsedCurrencies,
-                            sourceCurrency,
-                            cancellationToken);
+                        if (historicalSnapshot is null ||
+                            !ContainsAllRequestedCurrencies(historicalSnapshot, selectedCurrencies))
+                        {
+                            _logger.LogInformation(
+                                "Historical snapshot for {Date} and base currency {BaseCurrency} is missing requested currencies. Fetching from ExchangeRateHost.",
+                                date,
+                                sourceCurrency);
 
-                        historicalSnapshot = _responseMapper.MapHistorical(historicalResponse);
+                            var historicalResponse = await _exchangeRateHostClient.GetHistoricalRatesAsync(
+                                date,
+                                parsedCurrencies,
+                                sourceCurrency,
+                                cancellationToken);
 
-                        await _exchangeRateCacheService.SaveHistoricalSnapshotAsync(
+                            historicalSnapshot = _responseMapper.MapHistorical(historicalResponse);
+
+                            await _exchangeRateCacheService.SaveHistoricalSnapshotAsync(
+                                historicalSnapshot,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            _logger.LogInformation(
+                                "Using cached historical snapshot for {Date} and base currency {BaseCurrency}.",
+                                date,
+                                sourceCurrency);
+                        }
+
+                        var filteredHistoricalSnapshot = FilterSnapshot(
                             historicalSnapshot,
-                            cancellationToken);
-                    }
-                    else
-                    {
-                        _logger.LogInformation(
-                            "Using cached historical snapshot for {Date} and base currency {BaseCurrency}.",
-                            date,
-                            sourceCurrency);
-                    }
+                            selectedCurrencies);
 
-                    var filteredHistoricalSnapshot = FilterSnapshot(historicalSnapshot, selectedCurrencies);
-
-                    if (filteredHistoricalSnapshot.Rates.Count == 0)
+                        if (filteredHistoricalSnapshot.Rates.Count > 0)
+                        {
+                            historicalSnapshots.Add(filteredHistoricalSnapshot);
+                        }
+                    }
+                    catch (HttpRequestException ex) when (
+                        ex.Message.Contains("429", StringComparison.OrdinalIgnoreCase))
                     {
-                        _logger.LogInformation(
-                            "Cached historical snapshot for {Date} does not contain requested currencies. Fetching fresh historical snapshot.",
+                        _logger.LogWarning(
+                            ex,
+                            "Historical data for {Date} could not be loaded because the external API rate limit was reached. This date will be ignored.",
                             date);
 
-                        var historicalResponse = await _exchangeRateHostClient.GetHistoricalRatesAsync(
-                            date,
-                            parsedCurrencies,
-                            sourceCurrency,
-                            cancellationToken);
-
-                        historicalSnapshot = _responseMapper.MapHistorical(historicalResponse);
-
-                        await _exchangeRateCacheService.SaveHistoricalSnapshotAsync(
-                            historicalSnapshot,
-                            cancellationToken);
-
-                        filteredHistoricalSnapshot = FilterSnapshot(historicalSnapshot, selectedCurrencies);
+                        continue;
                     }
-
-                    historicalSnapshots.Add(filteredHistoricalSnapshot);
                 }
 
                 var analysisResult = _currencyAnalysisService.Analyze(
@@ -213,6 +209,17 @@ namespace CurrencyApp.Api.Controllers
                     })
                     .ToList()
             };
+        }
+
+        private static bool ContainsAllRequestedCurrencies(
+            ExchangeRateSnapshot snapshot,
+            HashSet<string> selectedCurrencies)
+        {
+            var availableCurrencies = snapshot.Rates
+                .Select(rate => rate.Currency)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return selectedCurrencies.All(availableCurrencies.Contains);
         }
 
         private static List<string> ParseCurrencies(string currencies)

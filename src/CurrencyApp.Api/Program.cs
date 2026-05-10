@@ -55,16 +55,38 @@ builder.Services.AddHttpClient("ExchangeRateHost", (serviceProvider, client) =>
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 });
 
-builder.Services.Configure<ExchangeRateCacheOptions>(
-    builder.Configuration.GetSection("ExchangeRateCache"));
-
 builder.Services.Configure<UserSettingsStorageOptions>(
     builder.Configuration.GetSection("UserSettingsStorage"));
 
 builder.Services.Configure<LoggingStorageOptions>(
     builder.Configuration.GetSection("LoggingStorage"));
 
-builder.Services.AddScoped<IExchangeRateHostClient, ExchangeRateHostClient>();
+var useMockExchangeRateData = builder.Configuration.GetValue<bool>("ExchangeRateHost:UseMockData");
+
+builder.Services.Configure<ExchangeRateCacheOptions>(options =>
+{
+    var cacheRootPath = useMockExchangeRateData
+        ? builder.Configuration["ExchangeRateCache:MockRootPath"]
+        : builder.Configuration["ExchangeRateCache:RealRootPath"];
+
+    if (string.IsNullOrWhiteSpace(cacheRootPath))
+    {
+        cacheRootPath = useMockExchangeRateData
+            ? "data/exchange-rate-cache-mock"
+            : "data/exchange-rate-cache-real";
+    }
+
+    options.RootPath = cacheRootPath;
+});
+
+if (useMockExchangeRateData)
+{
+    builder.Services.AddScoped<IExchangeRateHostClient, MockExchangeRateHostClient>();
+}
+else
+{
+    builder.Services.AddScoped<IExchangeRateHostClient, ExchangeRateHostClient>();
+}
 builder.Services.AddScoped<IExchangeRateResponseMapper, ExchangeRateResponseMapper>();
 builder.Services.AddScoped<ICurrencyAnalysisService, CurrencyAnalysisService>();
 builder.Services.AddScoped<IExchangeRateCacheService, FileExchangeRateCacheService>();
