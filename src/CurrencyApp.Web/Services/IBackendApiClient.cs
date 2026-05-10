@@ -5,6 +5,7 @@ namespace CurrencyApp.Web.Services
     public interface IBackendApiClient
     {
         Task<CurrencyAnalysisResult> AnalyzeAsync(
+            string BaseCurrency,
             string currencies,
             DateOnly startDate,
             DateOnly endDate,

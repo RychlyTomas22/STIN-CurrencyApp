@@ -27,6 +27,7 @@ namespace CurrencyApp.Web.Controllers
             try
             {
                 var result = await _backendApiClient.AnalyzeAsync(
+                    request.BaseCurrency,
                     request.Currencies,
                     request.StartDate,
                     request.EndDate,
@@ -47,6 +48,7 @@ namespace CurrencyApp.Web.Controllers
 
     public class DashboardAnalyzeRequest
     {
+        public string BaseCurrency { get; set; } = string.Empty;
         public string Currencies { get; set; } = string.Empty;
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
