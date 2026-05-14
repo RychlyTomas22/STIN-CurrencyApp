@@ -15,10 +15,8 @@ var configuration = new ConfigurationBuilder()
     .AddEnvironmentVariables()
     .Build();
 
-var logPath = configuration["LoggingStorage:Path"] ?? "data/logs/log-.txt";
-var resolvedLogPath = Path.IsPathRooted(logPath)
-    ? logPath
-    : Path.Combine(Directory.GetCurrentDirectory(), logPath);
+var logPath = configuration["LoggingStorage:Path"] ?? "data/logs/api-log-.txt";
+var resolvedLogPath = ResolveLogPath(logPath);
 
 var logDirectory = Path.GetDirectoryName(resolvedLogPath);
 if (!string.IsNullOrWhiteSpace(logDirectory))
@@ -104,6 +102,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseSerilogRequestLogging();
+
 
 app.Use(async (context, next) =>
 {
@@ -123,6 +123,28 @@ app.Use(async (context, next) =>
 
     await next();
 });
+static string ResolveLogPath(string logPath)
+{
+    if (string.IsNullOrWhiteSpace(logPath))
+    {
+        return Path.Combine(Directory.GetCurrentDirectory(), "data", "logs", "api-log-.txt");
+    }
+
+    var homePath = Environment.GetEnvironmentVariable("HOME");
+
+    if (!string.IsNullOrWhiteSpace(homePath))
+    {
+        logPath = logPath
+            .Replace("%HOME%", homePath, StringComparison.OrdinalIgnoreCase)
+            .Replace("$HOME", homePath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    logPath = Environment.ExpandEnvironmentVariables(logPath);
+
+    return Path.IsPathRooted(logPath)
+        ? logPath
+        : Path.Combine(Directory.GetCurrentDirectory(), logPath);
+}
 
 app.MapControllers();
 
