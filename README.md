@@ -4,6 +4,12 @@ An ASP.NET Core application for viewing and analysing exchange rates. It has a w
 
 The dashboard lets a signed-in demo user select a base currency, target currencies and a date range. The API obtains current and historical rates, caches snapshots in files and calculates the highest and lowest current rate among the selected currencies and their average historical rates. The API can use either an external exchange-rate service or built-in mock data.
 
+## Known limitations
+
+- The dashboard's “strongest” and “weakest” labels currently correspond to the largest and smallest numerical exchange-rate quotes. They are not a meaningful comparison of the currencies' relative strength.
+- The file-backed live cache has no expiry policy, so a saved “current” rate can become stale.
+- The external provider request URL currently includes the configured access key and is written to application logs. Use only a disposable demo key with this version and avoid sharing those logs.
+
 ## Projects
 
 - `src/CurrencyApp.Web` – MVC interface with cookie-based demo login, dashboard and settings.
